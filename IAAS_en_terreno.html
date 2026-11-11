@@ -96,6 +96,15 @@ nav .ic{font-size:21px;line-height:1}
 .chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:4px}
 .chip{border:1px solid var(--line);background:#fff;border-radius:20px;padding:7px 12px;font-size:13px;font-weight:600;color:var(--ink)}
 .chip.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+.devbox{border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin-top:4px;background:#fcfbf9}
+.devrow{display:flex;align-items:center;gap:8px;margin:6px 0}
+.devrow .devlbl{flex:0 0 42px;font-weight:800;color:var(--blue);font-size:13px}
+.devrow select{flex:1}
+.devrow input{flex:1.1}
+.devbox select,.devbox input{padding:9px 10px;font-size:15px}
+.signrow{display:flex;align-items:center;gap:8px;margin:7px 0}
+.signrow .chip{flex:1;text-align:left}
+.signrow .signdate{flex:0 0 42%;padding:8px 10px;border:1px solid var(--line);border-radius:10px;font-size:14px;background:#fff}
 .pend{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:8px 0;font-size:13.5px}
 .pend .px{float:right;color:var(--bad);font-weight:800}
 .note{background:#eef3f2;border:1px solid #cfe0dd;border-radius:11px;padding:10px 12px;font-size:12.5px;color:var(--teal-d);margin:10px 0}
@@ -154,8 +163,27 @@ nav .ic{font-size:21px;line-height:1}
     <select id="rServ"><option value="">—</option><option>UPC</option><option>UCM</option><option>MQ</option></select>
     <label>Cama / ubicación</label>
     <input id="rCama" type="text" placeholder="ej. MQ 410-2">
-    <label>Signos / criterios presentes</label>
-    <div class="chips" id="rSignos"></div>
+
+    <label>Cambio de servicio (si corresponde)</label>
+    <select id="rServNuevo"><option value="">— sin cambio —</option><option>UPC</option><option>UCM</option><option>MQ</option></select>
+    <input id="rFechaCambio" type="date" style="margin-top:8px" placeholder="fecha del cambio">
+
+    <label>Dispositivos invasivos (si corresponde)</label>
+    <div class="devbox">
+      <div class="devrow"><span class="devlbl">CVC</span>
+        <select id="rCvcAcc"><option value="">—</option><option>Instalación</option><option>Retiro</option></select>
+        <input id="rCvcFecha" type="date"></div>
+      <select id="rCvcTipo"><option value="">CVC · tipo / sitio de acceso (si se instala)…</option><option>Yugular derecha</option><option>Yugular izquierda</option><option>Subclavia derecha</option><option>Subclavia izquierda</option><option>Femoral derecha</option><option>Femoral izquierda</option><option>PICC brazo derecho</option><option>PICC brazo izquierdo</option><option>Tunelizado</option><option>Implantado (port)</option><option>Umbilical</option><option>Otro</option></select>
+      <div class="devrow"><span class="devlbl">CUP</span>
+        <select id="rCupAcc"><option value="">—</option><option>Instalación</option><option>Retiro</option></select>
+        <input id="rCupFecha" type="date"></div>
+      <div class="devrow"><span class="devlbl">VMI</span>
+        <select id="rVmiAcc"><option value="">—</option><option>Instalación</option><option>Retiro</option></select>
+        <input id="rVmiFecha" type="date"></div>
+    </div>
+
+    <label>Signos / criterios presentes (marca y pon la fecha de inicio)</label>
+    <div id="rSignos"></div>
     <label>Cultivo / examen relevante (texto libre)</label>
     <input id="rCult" type="text" placeholder="ej. Hemocultivo positivo S. aureus">
     <label>Antibiótico</label>
@@ -187,7 +215,7 @@ nav .ic{font-size:21px;line-height:1}
     <div class="spacer"></div>
     <button class="btn block danger" style="border:1px solid var(--bad);background:#fff" onclick="borrarTodo()">Borrar datos de este teléfono</button>
     <div class="spacer"></div>
-    <div class="hint center">IAAS en terreno · Hospital del Cobre — Calama · v1</div>
+    <div class="hint center">IAAS en terreno · Hospital del Cobre — Calama · v2</div>
   </div>
 </main>
 
@@ -340,7 +368,8 @@ function afterLoad(){
 function initials(n){ const p=String(n||'').trim().split(/\s+/); return ((p[0]||'?')[0]+(p[1]||'')[0]||'').toUpperCase(); }
 function renderList(q){
   const wrap=document.getElementById('plist'); q=(q||'').toLowerCase().trim();
-  const arr=DB.patients.filter(p=> !q || String(p.nombre).toLowerCase().includes(q) || String(p.rut).toLowerCase().includes(q));
+  const arr=DB.patients.filter(p=> !q || String(p.nombre).toLowerCase().includes(q) || String(p.rut).toLowerCase().includes(q))
+    .slice().sort((a,b)=>String(a.nombre||a.rut).localeCompare(String(b.nombre||b.rut),'es',{sensitivity:'base'}));
   document.getElementById('countHint').textContent=arr.length+' de '+DB.patients.length+' pacientes';
   wrap.innerHTML=arr.map((p,i)=>{
     const gi=DB.patients.indexOf(p);
@@ -472,21 +501,35 @@ function fillRegPac(){
 }
 (function initSignChips(){
   const w=document.getElementById('rSignos');
-  w.innerHTML=signosList.map((s,i)=>`<div class="chip" data-s="${esc(s)}" onclick="this.classList.toggle('on')">${esc(s.split('/')[0])}</div>`).join('');
+  w.innerHTML=signosList.map((s,i)=>`<div class="signrow">
+     <span class="chip" data-s="${esc(s)}" onclick="this.classList.toggle('on')">${esc(s)}</span>
+     <input type="date" class="signdate" data-s="${esc(s)}" title="Fecha de inicio">
+   </div>`).join('');
 })();
 document.getElementById('rFecha').valueAsDate=new Date();
 function guardarCaptura(){
   const rut=document.getElementById('rPac').value;
   if(!rut){ alert('Elige el paciente.'); return; }
-  const sign=[...document.querySelectorAll('#rSignos .chip.on')].map(c=>c.dataset.s);
-  const rec={rut, nombre:(DB&&DB.patients.find(p=>p.rut===rut)||{}).nombre||'', fecha:document.getElementById('rFecha').value,
-    serv:document.getElementById('rServ').value, cama:document.getElementById('rCama').value,
-    signos:sign.join(' | '), cultivo:document.getElementById('rCult').value, atb:document.getElementById('rAtb').value,
-    nota:document.getElementById('rNota').value, ts:Date.now()};
+  const sign=[...document.querySelectorAll('#rSignos .chip.on')].map(c=>{
+    const d=document.querySelector('#rSignos .signdate[data-s="'+c.dataset.s+'"]');
+    const fe=d&&d.value?(' ('+d.value+')'):''; return c.dataset.s+fe; });
+  const gv=id=>document.getElementById(id).value;
+  // armar texto de dispositivos
+  const dps=[];
+  [['CVC','rCvcAcc','rCvcFecha'],['CUP','rCupAcc','rCupFecha'],['VMI','rVmiAcc','rVmiFecha']].forEach(([n,acc,fe])=>{
+    if(gv(acc)){ let s=n+' '+gv(acc)+(gv(fe)?(' '+gv(fe)):''); if(n==='CVC'&&gv('rCvcTipo')) s+=' ('+gv('rCvcTipo')+')'; dps.push(s); }
+  });
+  const rec={rut, nombre:(DB&&DB.patients.find(p=>p.rut===rut)||{}).nombre||'', fecha:gv('rFecha'),
+    serv:gv('rServ'), cama:gv('rCama'),
+    servNuevo:gv('rServNuevo'), fechaCambio:gv('rFechaCambio'),
+    dispositivos:dps.join(' ; '),
+    signos:sign.join(' | '), cultivo:gv('rCult'), atb:gv('rAtb'),
+    nota:gv('rNota'), ts:Date.now()};
   const cap=getCap(); cap.push(rec); setCap(cap);
   // limpiar
-  document.getElementById('rCama').value='';document.getElementById('rCult').value='';document.getElementById('rAtb').value='';document.getElementById('rNota').value='';
+  ['rCama','rCult','rAtb','rNota','rServNuevo','rFechaCambio','rCvcAcc','rCvcFecha','rCvcTipo','rCupAcc','rCupFecha','rVmiAcc','rVmiFecha'].forEach(id=>document.getElementById(id).value='');
   document.querySelectorAll('#rSignos .chip.on').forEach(c=>c.classList.remove('on'));
+  document.querySelectorAll('#rSignos .signdate').forEach(d=>d.value='');
   renderPend(); alert('Visita guardada en el teléfono. Recuerda exportarla para pasarla a la planilla.');
 }
 function getCap(){ try{ return JSON.parse(localStorage.getItem(LS_CAP)||'[]'); }catch(_){ return []; } }
@@ -494,16 +537,18 @@ function setCap(a){ try{ localStorage.setItem(LS_CAP,JSON.stringify(a)); }catch(
 function renderPend(){
   const cap=getCap(); const w=document.getElementById('pendWrap');
   if(!cap.length){ w.innerHTML='<div class="hint">No hay visitas registradas pendientes de exportar.</div>'; return; }
-  w.innerHTML='<div class="hint">'+cap.length+' visita(s) registrada(s) en el teléfono:</div>'+cap.map((c,i)=>
-    `<div class="pend"><span class="px" onclick="delPend(${i})">✕</span><b>${esc(c.nombre||c.rut)}</b> · ${esc(c.fecha)}<br>
-     <span style="color:var(--muted);font-size:12.5px">${esc([c.serv,c.cama,c.signos,c.cultivo,c.atb].filter(Boolean).join(' · '))||'—'}</span></div>`).join('')+
+  w.innerHTML='<div class="hint">'+cap.length+' visita(s) registrada(s) en el teléfono:</div>'+cap.map((c,i)=>{
+    const camb=c.servNuevo?('cambio→'+c.servNuevo+(c.fechaCambio?(' '+c.fechaCambio):'')):'';
+    const extra=[c.serv,c.cama,camb,c.dispositivos,c.signos,c.cultivo,c.atb].filter(Boolean).join(' · ');
+    return `<div class="pend"><span class="px" onclick="delPend(${i})">✕</span><b>${esc(c.nombre||c.rut)}</b> · ${esc(c.fecha)}<br>
+     <span style="color:var(--muted);font-size:12.5px">${esc(extra)||'—'}</span></div>`;}).join('')+
      '<div class="spacer"></div><button class="btn teal block" onclick="exportCaptura()">Exportar todo (CSV)</button>';
 }
 function delPend(i){ const cap=getCap(); cap.splice(i,1); setCap(cap); renderPend(); }
 function exportCaptura(){
   const cap=getCap(); if(!cap.length){ alert('No hay visitas registradas para exportar.'); return; }
-  const cols=['rut','nombre','fecha','serv','cama','signos','cultivo','atb','nota'];
-  const head=['RUT','Nombre','Fecha visita','Servicio','Cama','Signos','Cultivo/examen','Antibiótico','Observación'];
+  const cols=['rut','nombre','fecha','serv','cama','servNuevo','fechaCambio','dispositivos','signos','cultivo','atb','nota'];
+  const head=['RUT','Nombre','Fecha visita','Servicio','Cama','Servicio nuevo','Fecha cambio','Dispositivos (acción/fecha)','Signos','Cultivo/examen','Antibiótico','Observación'];
   const esc2=s=>'"'+String(s==null?'':s).replace(/"/g,'""')+'"';
   const csv='﻿'+head.map(esc2).join(';')+'\n'+cap.map(r=>cols.map(c=>esc2(r[c])).join(';')).join('\n');
   const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
